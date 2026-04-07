@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION_BIN="260407"
+VERSION_BIN="260408"
 
 SN="${0##*/}"
 ID="[$SN]"
@@ -206,7 +206,7 @@ fi
 #
 if [ $VERSION_KUBEADM -eq 1 ]; then
   (( $s != 0 )) && echo; ((++s))
-  echo "$ID: stage: VERSION_KUBEADM"
+  echo "$ID: stage: VERSION-KUBEADM"
 
   set -ex
   kubeadm $DEBUG_OPTS version -o yaml
@@ -218,7 +218,7 @@ fi
 #
 if [ $VERSION_STABLE -eq 1 ]; then
   (( $s != 0 )) && echo; ((++s))
-  echo "$ID: stage: VERSION_STABLE"
+  echo "$ID: stage: VERSION-STABLE"
 
   (
   set -ex
@@ -232,7 +232,7 @@ fi
 #
 if [ $IMAGE_LIST -eq 1 ]; then
   (( $s != 0 )) && echo; ((++s))
-  echo "$ID: stage: IMAGE_LIST"
+  echo "$ID: stage: IMAGE-LIST"
 
   if [ -n "$V" ]; then
     set -ex

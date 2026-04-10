@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION_BIN="260408"
+VERSION_BIN="260409"
 
 SN="${0##*/}"
 ID="[$SN]"
@@ -12,13 +12,17 @@ BACKUP_LIST=0
 DEBUG=0
 DEBUG_OPTS=""
 LINK=0
+EVAL=0
 VERSION_KUBEADM=0
 VERSION_STABLE=0
+PM_CONFIG=0
+PM_LIST=0
+PM_INSTALL=0
 IMAGE_LIST=0
-ELIST=0
-ESHOW=0
-ESHOW_RE=""
-EEDIT=0
+ENV_LIST=0
+ENV_SHOW=0
+ENV_SHOW_RE=""
+ENV_EDIT=0
 HELP=0
 QUIET=0
 
@@ -34,6 +38,8 @@ s=0
 : ${API:=$(echo $A|cut -d- -f3-)}
 : ${EDIR:="/usr/local/etc/kman.d"}
 : ${LDIR:="/usr/local/bin/alias-kman"}
+: ${DDIR:="/var/backup/kman"}
+: ${COMM:=$(readlink -f ${BASH_SOURCE})}
 
 while [ $# -gt 0 ]; do
   case $1 in
@@ -58,9 +64,46 @@ while [ $# -gt 0 ]; do
       VERSION_STABLE=1
       shift
       ;;
+    -pc)
+      PM_CONFIG=1
+      [[ ${2:0:1} != "-" ]] && V="$2" && shift
+      shift
+      ;;
+    -pl)
+      PM_LIST=1
+      [[ ${2:0:1} != "-" ]] && V="$2" && shift
+      shift
+      ;;
+    -pi)
+      PM_INSTALL=1
+      [[ ${2:0:1} != "-" ]] && V="$2" && shift
+      shift
+      ;;
     -il)
       IMAGE_LIST=1
       [[ ${2:0:1} != "-" ]] && V="$2" && shift
+      shift
+      ;;
+    -l)
+      ENV_LIST=1
+      shift
+      ;;
+    -s)
+      ENV_SHOW=1
+      ENV_SHOW_RE="$2"
+      QUIET=1
+      shift; shift
+      ;;
+    -E)
+      ENV_EDIT=1
+      shift
+      ;;
+    -L)
+      LINK=1
+      shift
+      ;;
+    -x)
+      EVAL=1
       shift
       ;;
     -h|-help|--help)
@@ -83,6 +126,11 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+if [[ $ARGC -eq 0 && "$A" = "kman" ]]; then
+  ENV_LIST=1
+  QUIET=1
+fi
+
 #
 # stage: HELP
 #
@@ -96,7 +144,15 @@ if [ $HELP -eq 1 ]; then
   echo ""
   echo "$SN -L [-x]     # link show,run"
   echo ""
+  echo "$SN -pc [ver]   # package manager config"
+  echo "$SN -pl [ver]   # package manager list"
+  echo "$SN -pi [ver]   # package manager install"
+  echo ""
   echo "$SN -il [ver]   # image list"
+  echo ""
+  echo "$SN -l                    # env list"
+  echo "$SN -s [re]               # env show"
+  echo "$SN -E                    # env edit"
   echo ""
   echo "common opts:"
   echo "  -g  - debug"
@@ -114,7 +170,7 @@ fi
 #
 # stage: CONFIG
 #
-for f in /usr/local/etc/kman.env $EDIR/\$A; do
+for f in /usr/local/etc/kman.env $EDIR/$A; do
   if [ -e $f ]; then
     [[ "$EFILE" != "" ]] && EFILE="$EFILE $f" || EFILE="$f"
     . ${f}
@@ -182,11 +238,7 @@ if [ $LINK -ne 0 ]; then
 
   ls $EDIR/ | \
   while read E; do
-    if grep -q EXEC=1 $EDIR/$E; then
-      LSRC=${COMM%.sh}-exec.sh
-    else
-      LSRC=${COMM}
-    fi
+    LSRC=${COMM}
     if [ ! -f $LDIR/$E ]; then
       if [ $EVAL -ne 0 ]; then
         set -ex
@@ -202,7 +254,7 @@ if [ $LINK -ne 0 ]; then
 fi
 
 #
-# stage: VERSION_KUBEADM
+# stage: VERSION-KUBEADM
 #
 if [ $VERSION_KUBEADM -eq 1 ]; then
   (( $s != 0 )) && echo; ((++s))
@@ -214,7 +266,7 @@ if [ $VERSION_KUBEADM -eq 1 ]; then
 fi
 
 #
-# stage: VERSION_STABLE
+# stage: VERSION-STABLE
 #
 if [ $VERSION_STABLE -eq 1 ]; then
   (( $s != 0 )) && echo; ((++s))
@@ -228,7 +280,135 @@ if [ $VERSION_STABLE -eq 1 ]; then
 fi
 
 #
-# stage: IMAGE_LIST
+# stage: PM-CONFIG
+#
+if [ $PM_CONFIG -eq 1 ]; then
+  (( $s != 0 )) && echo; ((++s))
+  echo "$ID: stage: PM-CONFIG"
+
+  if [ "$V" = ""  ]; then
+    echo "$ID: error: require ver"
+    exit 1
+  fi
+
+  VB=${V%.*}
+  FB="/etc/apt/sources.list.d/debian-k8s-$VB.list"
+
+  if [ ! -f "$FB" ]; then
+    set -ex
+    echo "deb [trusted=yes] http://apt/sw/repos/k8s-deb/mirror/pkgs.k8s.io/core:/stable:/v$VB/deb /" > $FB
+    { set +ex; } 2>/dev/null
+    echo
+  fi
+
+  set -ex
+  cat $FB
+  { set +ex; } 2>/dev/null
+fi
+
+#
+# stage: PM-LIST
+#
+if [ $PM_LIST -eq 1 ]; then
+  (( $s != 0 )) && echo; ((++s))
+  echo "$ID: stage: PM-LIST"
+
+  if [ "$V" = ""  ]; then
+    echo "$ID: error: require ver"
+    exit 1
+  fi
+
+  VB=${V%.*}
+  FB="/etc/apt/sources.list.d/debian-k8s-$VB.list"
+
+  if [ ! -f "$FB" ]; then
+    echo package manager config not found: $FB
+  else
+    set -ex
+    cat $FB
+    { set +ex; } 2>/dev/null
+    echo
+
+    set -ex
+    apt-get -qq update
+    { set +ex; } 2>/dev/null
+    echo
+
+    set -ex
+    apt-cache madison kubeadm kubectl kubelet
+    { set +ex; } 2>/dev/null
+    echo
+
+    set -ex
+    apt-cache madison kubeadm kubectl kubelet | grep $V
+    { set +ex; } 2>/dev/null
+    echo
+
+    set -ex
+    apt list --installed kubeadm kubectl kubelet
+    { set +ex; } 2>/dev/null
+    echo
+
+    set -ex
+    apt-mark showhold
+    { set +ex; } 2>/dev/null
+  fi
+fi
+
+#
+# stage: PM-INSTALL
+#
+if [ $PM_INSTALL -eq 1 ]; then
+  (( $s != 0 )) && echo; ((++s))
+  echo "$ID: stage: PM-INSTALL"
+
+  if [ "$V" = ""  ]; then
+    echo "$ID: error: require ver"
+    exit 1
+  fi
+
+  VB=${V%.*}
+  FB="/etc/apt/sources.list.d/debian-k8s-$VB.list"
+
+  if [ ! -f "$FB" ]; then
+    echo package manager config not found: $FB
+    exit 1
+  fi
+
+  set -ex
+  cat $FB
+  { set +ex; } 2>/dev/null
+  echo
+
+  set -ex
+  apt-get -qq update
+  { set +ex; } 2>/dev/null
+  echo
+
+  set -ex
+  apt-cache madison kubeadm kubectl | grep $V
+  { set +ex; } 2>/dev/null
+  echo
+
+  set -ex
+  export DEBIAN_FRONTEND=noninteractive
+  apt -y --allow-change-held-packages install kubeadm=$V-1.1 kubectl=$V-1.1
+  { set +ex; } 2>/dev/null
+  echo
+
+  set -ex
+  apt list --installed kubeadm kubectl kubelet
+  { set +ex; } 2>/dev/null
+  echo
+
+  set -ex
+  apt-mark hold kubeadm kubectl
+  apt-mark showhold
+  { set +ex; } 2>/dev/null
+fi
+
+#
+# stage: IMAGE-LIST
 #
 if [ $IMAGE_LIST -eq 1 ]; then
   (( $s != 0 )) && echo; ((++s))
@@ -248,7 +428,7 @@ fi
 #
 # stage: ENV-LIST
 #
-if [ $ELIST -eq 1 ]; then
+if [ $ENV_LIST -eq 1 ]; then
   (( $s != 0 )) && echo; ((++s))
   echo "$ID: stage: ENV-LIST"
 
@@ -264,11 +444,11 @@ fi
 #
 # stage: ENV-SHOW
 #
-if [ $ESHOW -eq 1 ]; then
+if [ $ENV_SHOW -eq 1 ]; then
   (( $s != 0 )) && echo; ((++s))
-  echo "$ID: stage: ENV-SHOW (re: *$ESHOW_RE*)"
+  echo "$ID: stage: ENV-SHOW (re: *$ENV_SHOW_RE*)"
 
-  if [ "$A" != "kman" -a  "$ESHOW_RE" = "" ]; then
+  if [ "$A" != "kman" -a  "$ENV_SHOW_RE" = "" ]; then
     if [ ! -f $EDIR/$A ]; then
       echo file not found: $EDIR/$A
     else
@@ -279,7 +459,7 @@ if [ $ESHOW -eq 1 ]; then
       ) | cat
     fi
   else
-    for f in $EDIR/*$ESHOW_RE*; do
+    for f in $EDIR/*$ENV_SHOW_RE*; do
       if [ -f $f ]; then
         set -ex
         cat $f  2>&1
@@ -293,7 +473,7 @@ fi
 #
 # stage: ENV-EDIT
 #
-if [ $EEDIT -eq 1 ]; then
+if [ $ENV_EDIT -eq 1 ]; then
   (( $s != 0 )) && echo; ((++s))
   echo "$ID: stage: ENV-EDIT"
 

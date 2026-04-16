@@ -164,6 +164,16 @@ if [ $HELP -eq 1 ]; then
   echo ""
   echo "env variables used in env file:"
   echo "  \$V  - k8s version"
+  echo ""
+  echo "note:"
+  echo "  km -L -x            # link"
+  echo ""
+  echo "  ap-apn-api -E       # env edit"
+  echo ""
+  echo "  --- install: kubeadm,kubectl"
+  echo "  ap-apn-api -pc      # pm config"
+  echo "  ap-apn-api -pl      # pm list"
+  echo "  ap-apn-api -pi      # pm install"
   exit 0
 fi
 

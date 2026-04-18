@@ -1,11 +1,13 @@
 #!/bin/bash
 
-VERSION_BIN="260416"
+VERSION_BIN="260418"
 
 SN="${0##*/}"
 ID="[$SN]"
 
-INSTALL=0
+INSTALL_RSYNC=0
+INSTALL_ANPB=0
+INSTALL_ANPB_HP="kman"
 VERSION=0
 BACKUP=0
 BACKUP_LIST=0
@@ -43,12 +45,17 @@ s=0
 
 while [ $# -gt 0 ]; do
   case $1 in
-    --inst*|-inst*)
-      INSTALL=1
-      shift
-      ;;
     --vers*|-vers*)
       VERSION=1
+      shift
+      ;;
+    --inst*|-inst*)
+      INSTALL_RSYNC=1
+      shift
+      ;;
+    --anpb|-anpb)
+      INSTALL_ANPB=1
+      [[ -n "$2" && ${2:0:1} != "-" ]] && INSTALL_ANPB_HP="$2" && shift
       shift
       ;;
     -g)
@@ -135,24 +142,29 @@ fi
 # stage: HELP
 #
 if [ $HELP -eq 1 ]; then
-  echo "$SN -install    # install"
-  echo "$SN -version    # version"
-  echo "$SN -V          # version kubeadm"
-  echo "$SN -Vs         # version stable"
-  echo "$SN -B          # backup"
-  echo "$SN -Bl         # backup list"
+  echo "$SN -version                  # version"
+  echo "$SN -install                  # install with rsync"
+  echo "$SN -anpb [host_pattern] [-x] # install with ansible"
   echo ""
-  echo "$SN -L [-x]     # link show,run"
+  echo "$SN -B                        # backup"
+  echo "$SN -Bl                       # backup list"
   echo ""
-  echo "$SN -pc [ver]   # package manager config"
-  echo "$SN -pl [ver]   # package manager list"
-  echo "$SN -pi [ver]   # package manager install"
+  echo "$SN -L [-x]                   # link show,run"
   echo ""
-  echo "$SN -il [ver]   # image list"
+  echo "$SN -V                        # version kubeadm"
+  echo "$SN -Vs                       # version stable"
   echo ""
-  echo "$SN -l                    # env list"
-  echo "$SN -s [re]               # env show"
-  echo "$SN -E                    # env edit"
+  echo "$SN -pc [ver]                 # package manager config"
+  echo "$SN -pl [ver]                 # package manager list"
+  echo "$SN -pi [ver]                 # package manager install"
+  echo ""
+  echo "$SN -il [ver]                 # image list"
+  echo ""
+  echo "$SN -l                        # env list"
+  echo "$SN -s [re]                   # env show"
+  echo "$SN -E                        # env edit"
+  echo ""
+  echo "$SN                           # env list"
   echo ""
   echo "common opts:"
   echo "  -g  - debug"
@@ -183,7 +195,7 @@ fi
 for f in /usr/local/etc/kman.env $EDIR/$A; do
   if [ -e $f ]; then
     [[ "$EFILE" != "" ]] && EFILE="$EFILE $f" || EFILE="$f"
-    . ${f}
+    . $f
   fi
 done
 
@@ -196,9 +208,12 @@ if [ $VERSION -eq 1 ]; then
 fi
 
 #
-# stage: INSTALL
+# stage: INSTALL-RSYNC
 #
-if [ $INSTALL -eq 1 ]; then
+if [ $INSTALL_RSYNC -eq 1 ]; then
+  (( $s != 0 )) && echo; ((++s))
+  echo "$ID: stage: INSTALL-RSYNC"
+
   if [ -f kman.sh ]; then
     for d in /usr/local/bin /pub/pkb/kb/data/999224-kman/999224-000030_kman_script /pub/pkb/pb/playbooks/999224-kman/files; do
       if [ -d $d ]; then
@@ -208,6 +223,32 @@ if [ $INSTALL -eq 1 ]; then
       fi
     done
   fi
+
+  exit 0
+fi
+
+#
+# stage: INSTALL-ANPB
+#
+if [ $INSTALL_ANPB -eq 1 ]; then
+  (( $s != 0 )) && echo; ((++s))
+  echo "$ID: stage: INSTALL-ANPB (EVAL=$EVAL)"
+
+  if [ ! $(type -t anpb) ]; then
+    echo "$ID: error: command not found: anpb"
+    exit 1
+  fi
+
+  if [ $EVAL -eq 0 ]; then
+    set -ex
+    anpb kman_install.yml -e h=$INSTALL_ANPB_HP --check --diff
+    { set +ex; } 2>/dev/null
+  else
+    set -ex
+    anpb kman_install.yml -e h=$INSTALL_ANPB_HP
+    { set +ex; } 2>/dev/null
+  fi
+
   exit 0
 fi
 

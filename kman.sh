@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION_BIN="260422"
+VERSION_BIN="260423"
 
 SN="${0##*/}"
 ID="[$SN]"
@@ -270,7 +270,7 @@ if [ $QUIET -eq 0 ]; then
   (( $s != 0 )) && echo; ((++s))
   echo "$ID: stage: INFO"
 
-  [[ -n $INFO ]] && echo "info   = ${INFO}"
+  [[ -n $INFO ]] && echo "info   = $INFO"
   echo "cwd    = $(pwd -P)"
   echo "efile  = ${EFILE:-[none]}"
   echo "App    = ${A:-[none]}"

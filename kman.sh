@@ -246,7 +246,7 @@ if [ $INSTALL_ANPB -eq 1 ]; then
   echo "$ID: stage: INSTALL-ANPB (EVAL=$EVAL)"
 
   if [ ! $(type -t anpb) ]; then
-    echo "$ID: error: command not found: anpb"
+    echo "$ID: command not found: anpb"
     exit 1
   fi
 
@@ -487,6 +487,11 @@ fi
 if [ $IMAGE_PULL -eq 1 ]; then
   (( $s != 0 )) && echo; ((++s))
   echo "$ID: stage: IMAGE-PULL"
+
+  if [ ! $(type -t skopeo) ]; then
+    echo "$ID: command not found: skopeo"
+    exit 1
+  fi
 
   kubeadm $DEBUG_OPTS config images list ${V:+--kubernetes-version=$V} | \
   while read i; do

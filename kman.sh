@@ -608,7 +608,7 @@ if [ $IMAGE_PUSH -eq 1 ]; then
     exit 1
   fi
 
-  [[ $EVAL -ne 1 ]] && EVAL_CMD=echo || EVAL_CMD=""
+  [[ $EVAL -ne 1 ]] && EVAL_CMD="echo" || EVAL_CMD=""
 
   for RH in $REGISTRY_HOST; do
     kubeadm ${DEBUG:+--v=5} config images list ${V:+--kubernetes-version=$V} | \

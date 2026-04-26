@@ -272,15 +272,11 @@ if [ $INSTALL_ANPB -eq 1 ]; then
     exit 1
   fi
 
-  if [ $EVAL -eq 0 ]; then
-    set -ex
-    anpb kman_install.yml -e h=$INSTALL_ANPB_HP --check --diff
-    { set +ex; } 2>/dev/null
-  else
-    set -ex
-    anpb kman_install.yml -e h=$INSTALL_ANPB_HP
-    { set +ex; } 2>/dev/null
-  fi
+  [[ $EVAL -ne 1 ]] && EVAL_OPT="--check --diff" || EVAL_OPT=""
+
+  set -ex
+  anpb kman_install.yml -e h=$INSTALL_ANPB_HP $EVAL_OPT
+  { set +ex; } 2>/dev/null
 
   exit 0
 fi
@@ -470,17 +466,12 @@ if [ $PACKAGE_INSTALL_KCLI -eq 1 ]; then
   { set +ex; } 2>/dev/null
   echo
 
-  if [ $EVAL -eq 1 ]; then
-    set -ex
-    export DEBIAN_FRONTEND=noninteractive
-    apt-get -y --allow-change-held-packages install kubeadm=$V-1.1 kubectl=$V-1.1
-    { set +ex; } 2>/dev/null
-  else
-    set -ex
-    export DEBIAN_FRONTEND=noninteractive
-    apt-get -y --allow-change-held-packages --dry-run install kubeadm=$V-1.1 kubectl=$V-1.1
-    { set +ex; } 2>/dev/null
-  fi
+  [[ $EVAL -ne 1 ]] && EVAL_OPT="--dry-run" || EVAL_OPT=""
+
+  set -ex
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get -y --allow-change-held-packages $EVAL_OPT install kubeadm=$V-1.1 kubectl=$V-1.1
+  { set +ex; } 2>/dev/null
   echo
 
   set -ex
@@ -518,17 +509,12 @@ if [ $PACKAGE_INSTALL_SKOPEO -eq 1 ]; then
   { set +ex; } 2>/dev/null
   echo
 
-  if [ $EVAL -eq 1 ]; then
-    set -ex
-    export DEBIAN_FRONTEND=noninteractive
-    apt-get -y install skopeo
-    { set +ex; } 2>/dev/null
-  else
-    set -ex
-    export DEBIAN_FRONTEND=noninteractive
-    apt-get -y --dry-run install skopeo
-    { set +ex; } 2>/dev/null
-  fi
+  [[ $EVAL -ne 1 ]] && EVAL_OPT="--dry-run" || EVAL_OPT=""
+
+  set -ex
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get -y $EVAL_OPT install skopeo
+  { set +ex; } 2>/dev/null
   echo
 
   set -ex
@@ -585,7 +571,7 @@ if [ $IMAGE_SAVE -eq 1 ]; then
     exit 1
   fi
 
-  [[ $EVAL -ne 1 ]] && EVAL_CMD=echo || EVAL_CMD=""
+  [[ $EVAL -ne 1 ]] && EVAL_CMD="echo" || EVAL_CMD=""
 
   kubeadm ${DEBUG:+--v=5} config images list ${V:+--kubernetes-version=$V} | \
   while read i; do

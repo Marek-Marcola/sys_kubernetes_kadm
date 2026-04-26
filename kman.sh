@@ -379,7 +379,7 @@ if [ $PACKAGE_CONFIG -eq 1 ]; then
 
   if [ ! -f "$RB" ]; then
     set -ex
-    echo "deb [trusted=yes] http://apt/sw/repos/k8s-deb/mirror/pkgs.k8s.io/core:/stable:/v$VB/deb /" > $RB
+    echo "deb [trusted=yes] http://apt/sw/repos/k8s-deb/mirror/pkgs.k8s.io/core:/stable:/v$VB/deb /" | tee $RB
     { set +ex; } 2>/dev/null
     echo
   fi

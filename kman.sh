@@ -228,11 +228,11 @@ if [ $HELP -eq 1 ]; then
   echo ""
   echo "  ap-apn-api -E       # env edit"
   echo ""
-  echo "  --- install: kubeadm,kubectl,skopeo"
+  echo "  --- install: kubeadm,skopeo"
   echo "  ap-apn-api -pc      # config"
   echo "  ap-apn-api -pl      # list"
-  echo "  ap-apn-api -pk -x   # install"
-  echo "  ap-apn-api -ps -x   # install"
+  echo "  ap-apn-api -pka -x  # install kubeadm"
+  echo "  ap-apn-api -ps  -x  # install skopeo"
   exit 0
 fi
 

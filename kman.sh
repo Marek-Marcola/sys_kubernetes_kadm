@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION_BIN="260427"
+VERSION_BIN="260428"
 
 SN="${0##*/}"
 ID="[$SN]"
@@ -19,7 +19,8 @@ VERSION_KUBEADM=0
 VERSION_STABLE=0
 PACKAGE_CONFIG=0
 PACKAGE_LIST=0
-PACKAGE_INSTALL_KCLI=0
+PACKAGE_INSTALL_KUBEADM=0
+PACKAGE_INSTALL_KUBELET=0
 PACKAGE_INSTALL_SKOPEO=0
 IMAGE_LIST=0
 IMAGE_LIST_REG=0
@@ -85,8 +86,13 @@ while [ $# -gt 0 ]; do
       [[ -n "$2" && ${2:0:1} != "-" ]] && V="$2" && shift
       shift
       ;;
-    -pk)
-      PACKAGE_INSTALL_KCLI=1
+    -pka)
+      PACKAGE_INSTALL_KUBEADM=1
+      [[ -n "$2" && ${2:0:1} != "-" ]] && V="$2" && shift
+      shift
+      ;;
+    -pkl)
+      PACKAGE_INSTALL_KUBELET=1
       [[ -n "$2" && ${2:0:1} != "-" ]] && V="$2" && shift
       shift
       ;;
@@ -180,7 +186,8 @@ if [ $HELP -eq 1 ]; then
   echo ""
   echo "$SN -pc [ver]                 # package config"
   echo "$SN -pl [ver]                 # package list"
-  echo "$SN -pk [ver] [-x]            # package install kubeadm,kubectl"
+  echo "$SN -pka [ver] [-x]           # package install kubeadm,kubectl"
+  echo "$SN -pkl [ver] [-x]           # package install kubelet"
   echo "$SN -ps [-x]                  # package install skopeo"
   echo ""
   echo "$SN -il  [ver]                # image list from kubeadm"
@@ -402,6 +409,11 @@ if [ $PACKAGE_LIST -eq 1 ]; then
   VB=${V%.*}
   RB="/etc/apt/sources.list.d/debian-k8s-$VB.list"
 
+  set -ex
+  tree --noreport -F -hD -C -L 1 /etc/apt/sources.list.d
+  { set +ex; } 2>/dev/null
+    echo
+
   if [ ! -f "$RB" ]; then
     echo package manager config not found: $RB
   else
@@ -416,7 +428,7 @@ if [ $PACKAGE_LIST -eq 1 ]; then
     echo
 
     set -ex
-    apt-cache madison kubeadm kubectl kubelet
+    apt-cache madison kubeadm kubectl kubelet skopeo
     { set +ex; } 2>/dev/null
     echo
 
@@ -426,7 +438,7 @@ if [ $PACKAGE_LIST -eq 1 ]; then
     echo
 
     set -ex
-    apt list --installed kubeadm kubectl kubelet
+    apt list --installed kubeadm kubectl kubelet skopeo
     { set +ex; } 2>/dev/null
     echo
 
@@ -437,22 +449,14 @@ if [ $PACKAGE_LIST -eq 1 ]; then
 fi
 
 #
-# stage: PACKAGE-INSTALL-KCLI
+# stage: PACKAGE-INSTALL-KUBEADM
 #
-if [ $PACKAGE_INSTALL_KCLI -eq 1 ]; then
+if [ $PACKAGE_INSTALL_KUBEADM -eq 1 ]; then
   (( $s != 0 )) && echo; ((++s))
-  echo "$ID: stage: PACKAGE-INSTALL-KCLI (EVAL=$EVAL)"
+  echo "$ID: stage: PACKAGE-INSTALL-KUBEADM (EVAL=$EVAL)"
 
   if [ "$V" = ""  ]; then
     echo "$ID: require: ver"
-    exit 1
-  fi
-
-  VB=${V%.*}
-  RB="/etc/apt/sources.list.d/debian-k8s-$VB.list"
-
-  if [ ! -f "$RB" ]; then
-    echo "$ID: config not found: $RB"
     exit 1
   fi
 
@@ -483,6 +487,54 @@ if [ $PACKAGE_INSTALL_KCLI -eq 1 ]; then
     set -ex
     apt-mark showhold
     apt-mark hold kubeadm kubectl
+    { set +ex; } 2>/dev/null
+    echo
+  fi
+
+  set -ex
+  apt-mark showhold
+  { set +ex; } 2>/dev/null
+fi
+
+#
+# stage: PACKAGE-INSTALL-KUBELET
+#
+if [ $PACKAGE_INSTALL_KUBELET -eq 1 ]; then
+  (( $s != 0 )) && echo; ((++s))
+  echo "$ID: stage: PACKAGE-INSTALL-KUBELET (EVAL=$EVAL)"
+
+  if [ "$V" = ""  ]; then
+    echo "$ID: require: ver"
+    exit 1
+  fi
+
+  set -ex
+  apt-get -qq update
+  { set +ex; } 2>/dev/null
+  echo
+
+  set -ex
+  apt-cache madison kubelet | grep $V
+  { set +ex; } 2>/dev/null
+  echo
+
+  [[ $EVAL -ne 1 ]] && EVAL_OPT="--dry-run" || EVAL_OPT=""
+
+  set -ex
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get -y --allow-change-held-packages $EVAL_OPT install kubelet=$V-1.1
+  { set +ex; } 2>/dev/null
+  echo
+
+  set -ex
+  apt list --installed kubeadm kubectl kubelet
+  { set +ex; } 2>/dev/null
+  echo
+
+  if [ $EVAL -eq 1 ]; then
+    set -ex
+    apt-mark showhold
+    apt-mark hold kubelet
     { set +ex; } 2>/dev/null
     echo
   fi

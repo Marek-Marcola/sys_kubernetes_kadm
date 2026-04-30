@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION_BIN="260428"
+VERSION_BIN="260430"
 
 SN="${0##*/}"
 ID="[$SN]"
@@ -269,7 +269,11 @@ if [ $HELP -eq 1 ]; then
   echo "  ap-apn-api -pka -x  # install kubeadm"
   echo "  ap-apn-api -pis -x  # install skopeo"
   echo ""
-  echo "  --- upgrade:"
+  echo "  --- image: pull"
+  echo "  km -il -ilr api     # image list"
+  echo "  km -ip -x           # image pull"
+  echo ""
+  echo "  --- cluster: upgrade"
   echo "  ap-apn-api -cip     # cluster image pull"
   echo "  ap-apn-api -cil     # cluster image list"
   echo "  ap-apn-api -cup     # cluster upgrade plan"
@@ -726,13 +730,17 @@ if [ $IMAGE_PULL -eq 1 ]; then
       IR=$(echo $i | sed 's#^[^/]*/##' | awk -F: '{print $1}')
       IV=$(echo $i | sed 's#^[^/]*/##' | awk -F: '{print $2}')
 
-      set -ex
-      $EVAL_CMD \
-      skopeo ${DEBUG:+--debug} copy \
-        --src-tls-verify=0 \
-        --dest-tls-verify=0 \
-        docker://$i docker://${RH#*://}/$IR:$IV
-      { set +ex; } 2>/dev/null
+      [[ "$IR" = "coredns/coredns" ]] && IR="$IR coredns"
+
+      for j in $IR; do
+        set -ex
+        $EVAL_CMD \
+        skopeo ${DEBUG:+--debug} copy \
+          --src-tls-verify=0 \
+          --dest-tls-verify=0 \
+          docker://$i docker://${RH#*://}/$j:$IV
+        { set +ex; } 2>/dev/null
+      done
     done
   done
 fi
